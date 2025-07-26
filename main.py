@@ -4,13 +4,17 @@ import openai
 import os
 
 app = Flask(__name__)
+
+# Cargar API key desde variables de entorno
 openai.api_key = os.environ['OPENAI_API_KEY']
 
 @app.route("/incoming", methods=['POST'])
 def incoming():
-    print("📨 Mensaje recibido de Twilio")
     incoming_msg = request.values.get('Body', '').strip()
-    prompt = f"El usuario escribió por WhatsApp: {incoming_msg}. ¿Qué tarea quiere hacer?"
+    sender = request.values.get('From', '')
+
+    # Preparar mensaje para ChatGPT
+    prompt = f"Mensaje recibido por WhatsApp: {incoming_msg}. ¿Qué acción deseas que el asistente realice?"
 
     completion = openai.ChatCompletion.create(
         model="gpt-4",
@@ -19,13 +23,9 @@ def incoming():
     )
 
     reply = completion.choices[0].message['content']
+
+    # Enviar respuesta por Twilio
     resp = MessagingResponse()
-    resp.message(f"🤖 Asistente: {reply}\n\n¿Confirmas esta acción? (Responde SÍ o NO)")
+    msg = resp.message()
+    msg.body(f"🤖 Asistente:\n{reply}\n\n¿Confirmas esta acción? (Responde SÍ o NO)")
     return str(resp)
-
-@app.route("/")
-def home():
-    return "Bot activo en Render."
-
-if __name__ == "__main__":
-    app.run(debug=True)
